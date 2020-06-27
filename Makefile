@@ -1,2 +1,2 @@
-API.html: API.md
-	markdown API.md > API.html
+README.html: README.md
+	markdown README.md > README.html
