@@ -27,6 +27,8 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 
 Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 	function fop_wc_sx_sync(\$api, \$log) {
+		global \$wpdb;
+
 		if (!\$api) \$api = get_option('woocommerce-supplyXhain:apiurl');
 		if (is_string(\$api)) {
 			\$api = file_get_contents(\$api);
@@ -36,8 +38,28 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 		if (!\$log) \$log = function (\$msg) {};
 
+		\$category_map = [];
 		foreach (\$api['categories'] AS \$catid => \$catname) {
-			\$log(\"Kategorie \$catid = \$catname\");
+			\$term_ids = \$wpdb->get_results('SELECT term_id FROM `'.\$wpdb->prefix.'termmeta` WHERE meta_key = \\'sx_id\\' AND meta_value = ' . esc_sql(\$catid));
+			if (count(\$term_ids)) {
+				// found by sx_id
+				\$category_map[\$catid] = \$term_ids[0]->term_id;
+			} else {
+				\$term = get_term_by('name', \$catname, 'product_cat');
+				if (\$term) {
+					// found by name: update sx_id
+					\$category_map[\$catid] = \$term->term_id;
+					update_term_meta(\$term->term_id, 'sx_id', \$catid);
+					\$log(\"Claimed category \$catid = \$catname\");
+				} else {
+					// not found: create
+					\$term = wp_insert_term(\$catname, 'product_cat');
+					\$category_map[\$catid] = \$term['term_id'];
+					update_term_meta(\$term['term_id'], 'sx_id', \$catid);
+					\$log(\"Created category \$catid = \$catname\");
+				}
+			}
 		}
+		\$log('Category mapping: ' . json_encode(\$category_map));
 	}
 ">.
