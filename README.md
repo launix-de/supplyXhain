@@ -86,7 +86,8 @@ article := {
 	name: i18nstring,
 	detailsText?: i18nstring,
 	detailsHTML?: i18nstring,
-	pictures?: [picture],
+	pictures?: [picture], /* pictures */
+	categories?: [string], /* category id list */
 	detailURL?: string
 }
 
