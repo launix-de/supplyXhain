@@ -80,8 +80,10 @@ When GETting the supplyXhain URL, basic vendor information about the vendor as w
 	currency: string,
 	catalog_url: string,
 	quote_url: string,
-	categories: {*: string}
+	categories: {*: i18nstring}
 }
+
+i18nstring := string | {de_DE: string, de: string, en_US: string, en: string, ...}
 ```
 
 Catalog Endpoint

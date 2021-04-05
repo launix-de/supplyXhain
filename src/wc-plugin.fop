@@ -38,8 +38,20 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 		if (!\$log) \$log = function (\$msg) {};
 
+		// i18n
+		\$languages = ['de_DE', 'de', 'en_US', 'en']; // TODO: einstellbar
+
+		\$i18n = function (\$x) use (\$languages) {
+			if (is_string(\$x)) return \$x;
+			foreach (\$languages AS \$ln) {
+				if (isset(\$x[\$ln])) return \$x[\$ln];
+			}
+			return 'untranslated';
+		};
+
 		\$category_map = [];
 		foreach (\$api['categories'] AS \$catid => \$catname) {
+			\$catname = \$i18n(\$catname);
 			\$term_ids = \$wpdb->get_results('SELECT term_id FROM `'.\$wpdb->prefix.'termmeta` WHERE meta_key = \\'sx_id\\' AND meta_value = ' . esc_sql(\$catid));
 			if (count(\$term_ids)) {
 				// found by sx_id
@@ -61,5 +73,46 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			}
 		}
 		\$log('Category mapping: ' . json_encode(\$category_map));
+
+		\$store = new WC_Data_Store('product');
+		\$article_map = [];
+		\$page = 0;
+		while (true) {
+			\$catalog = json_decode(file_get_contents(\$api['catalog_url'] . '?page=' . \$page), true);
+			if (!\$catalog) break;
+
+			\$log('Loading '.count(\$catalog['items']) . ' articles');
+			\$wpdb->query('START TRANSACTION');
+			foreach (\$catalog['items'] AS \$item) {
+				\$posts = get_posts(['post_type' => 'product', 'meta_query' => [['key' => 'sx_id', 'value' => \$item['id']]]]);
+				if (!count(\$posts)) {
+					// create
+					\$product = new WC_Product_Simple();
+					\$store->create(\$product);
+					update_post_meta(\$product->get_id(), 'sx_id', \$item['id']);
+				} else {
+					\$product = new WC_Product_Simple(\$posts[0]);
+				}
+				\$article_map[\$item['id']] = \$product->get_id();
+
+				// TODO: update \$product attributes: name, detailsText/detailsHTML, pictures, categories
+				\$product->set_name(\$i18n(\$item['name']));
+				\$product->set_category_ids(array_map(function (\$x) use (\$category_map) {return \$category_map[\$x];}, \$item['categories']));
+				\$product->save();
+
+				// ensure state publish
+				if (\$product->status != 'publish') {
+					wp_publish_post(\$product->get_id());
+				}
+			}
+			\$wpdb->query('COMMIT');
+			\$log('Loaded '.count(\$catalog['items']) . ' articles');
+
+			if (!count(\$catalog['items']) || count(\$catalog['items']) < \$catalog['limit']) break; // fertig
+			\$page = \$catalog['page'] + 1;
+		}
+		// TODO: unpublish products with sx_id that are not in article_map
+		// --> wp_update_post(['ID' => ..., 'post_status' => 'draft']);
+		\$log('Import done');
 	}
 ">.
