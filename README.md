@@ -1,5 +1,24 @@
-supplyXhain API Documentation
-=============================
+supplyXhain API - one API endpoint - multiple shop systems
+==========================================================
+
+SupplyChain is a open REST API that lets you integrate all sorts of shops and market places with only one solution. Supported shops and market places are:
+
+| Market / Shop | Article Synchronization | Orders / Fulfillment |
+| --- | :---: | :---: |
+| WooCommerce | in progress | planned |
+| ebay | planned | planned |
+| amazon | planned | planned |
+
+The following ERP systems already support SupplyXhain:
+| ERP System | Article Synchronization | Orders / Fulfillment |
+| --- | :---: | :---: |
+| Launix ERPL | in progress | planned |
+| SAP | planned | planned |
+| LexWare | planned | planned |
+
+
+Basic definitions:
+------------------
 
 The supplyXhain API protocol is a REST/JSON based protocol that handles:
 
@@ -7,9 +26,7 @@ The supplyXhain API protocol is a REST/JSON based protocol that handles:
 - asking for quotes and offers with prices, discounts and shipping costs for a shopping basket
 - managing orders
 
-Basic definitions:
-------------------
-
+Basic terms are:
 - *Vendor*: A vendor is a person or organization that offers a supplyXhain endpoint
 - *Customer*: A customer is a client that connects to a supplyXhain API endpoint
 - *Article*: An article is a distinguishable buyable product or service with a common title / text and pictures. Articles can be further parameterized e.g. in size, color, print whereas it is still the same article.
