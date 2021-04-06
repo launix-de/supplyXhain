@@ -98,13 +98,32 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 				}
 				\$article_map[\$item['id']] = \$product->get_id();
 
-				// TODO: update \$product attributes: pictures, price
+				// update \$product attributes
 				\$product->set_name(\$i18n(\$item['name']));
 				\$product->set_category_ids(array_map(function (\$x) use (\$category_map) {return \$category_map[\$x];}, \$item['categories']));
 				\$product->set_description(wp_filter_post_kses(\$i18n(\$item['detailsHTML'])));
-				if (isset(\$item['price'])) {
+				if (isset(\$item['price'])) { // price
 					\$product->set_regular_price(\$item['price'] * \$pricefactor);
 				}
+				\$piclist = [];
+				foreach (\$item['pictures'] AS \$picture) {
+					// url, thumbnailURL, title
+					\$picposts = get_posts(['post_type' => 'attachment', 'meta_query' => [['key' => 'orig_url', 'value' => \$picture['url']]]]);
+					if (count(\$picposts)) {
+						\$picid = \$picposts[0]->ID;
+						if (\$picposts[0]->post_title != \$i18n(\$picture['title'])) {
+							wp_update_post(['ID' => \$picposts[0]->ID, 'post_title' => \$i18n(\$picture['title'])]);
+						}
+						array_push(\$piclist, \$picid);
+					} else {
+						\$log('Inserting Media ' . \$picture['url']);
+						\$picid = media_sideload_image(\$picture['url'].'.png', \$product->get_id(), \$i18n(\$picture['title']), 'id');
+						update_post_meta(\$picid, 'orig_url', \$picture['url']);
+						array_push(\$piclist, \$picid);
+					}
+				}
+				\$product->set_gallery_image_ids(\$piclist);
+				if (count(\$piclist)) \$product->set_image_id(\$piclist[0]);
 				\$product->save();
 
 				// ensure state publish
