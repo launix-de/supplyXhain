@@ -95,9 +95,10 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 				}
 				\$article_map[\$item['id']] = \$product->get_id();
 
-				// TODO: update \$product attributes: name, detailsText/detailsHTML, pictures, categories
+				// TODO: update \$product attributes: pictures, price
 				\$product->set_name(\$i18n(\$item['name']));
 				\$product->set_category_ids(array_map(function (\$x) use (\$category_map) {return \$category_map[\$x];}, \$item['categories']));
+				\$product->set_description(wp_filter_post_kses(\$i18n(\$item['detailsHTML'])));
 				\$product->save();
 
 				// ensure state publish
