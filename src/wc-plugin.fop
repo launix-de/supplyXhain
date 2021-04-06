@@ -30,7 +30,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 	function fop_wc_sx_sync(\$api, \$log) {
 		global \$wpdb;
 
-		\$pricefactor = doubleval(get_option('woocommerce-supplyXhain:pricefactor')) ?: 1;
+		\$pricefactor = doubleval(json_decode(str_replace(',', '.', get_option('woocommerce-supplyXhain:pricefactor')))) ?: 1;
 
 		if (!\$api) \$api = get_option('woocommerce-supplyXhain:apiurl');
 		if (is_string(\$api)) {
