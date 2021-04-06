@@ -111,8 +111,15 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			if (!count(\$catalog['items']) || count(\$catalog['items']) < \$catalog['limit']) break; // fertig
 			\$page = \$catalog['page'] + 1;
 		}
-		// TODO: unpublish products with sx_id that are not in article_map
-		// --> wp_update_post(['ID' => ..., 'post_status' => 'draft']);
+
+		\$wpdb->query('START TRANSACTION');
+		// unpublish products with sx_id that are not in article_map
+		\$posts = \$wpdb->get_results('SELECT post_id FROM `'.\$wpdb->prefix.'postmeta` WHERE meta_key = \\'sx_id\\' AND NOT meta_value IN (' . implode(',',array_keys(\$article_map)) . ')');
+		foreach (\$posts AS \$post) {
+			\$log('disable '.\$post->post_id);
+			wp_update_post(['ID' => \$post->post_id, 'post_status' => 'draft']);
+		}
+		\$wpdb->query('COMMIT');
 		\$log('Import done');
 	}
 ">.
