@@ -17,7 +17,17 @@ The following ERP systems already support SupplyXhain:
 | Standalone Client | in progress | planned |
 | Launix ERPL | in progress | planned |
 | SAP | planned | planned |
-| LexWare | planned | planned |
+| Lexware | planned | planned |
+| billbee | planned | planned |
+| JTL-Software | planned | planned |
+| Plentymarkets | planned | planned |
+| Afterbuy | planned | planned |
+| Tricoma | planned | planned |
+| Faktura XP | planned | planned |
+| Xentral | planned | planned |
+| Vario | planned | planned |
+| Mercator | planned | planned |
+| Reybex | planned | planned |
 
 Benefits are:
 - Enter article information only once - upload and synchronization is done automatically
