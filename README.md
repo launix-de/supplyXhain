@@ -124,6 +124,7 @@ article := {
 	name: i18nstring,
 	detailsText?: i18nstring,
 	detailsHTML?: i18nstring,
+	price?: number, /* list price - price in offer may differ; this should be the maximum expected price for this item */
 	pictures?: [picture], /* pictures */
 	categories?: [string], /* category id list */
 	detailURL?: string

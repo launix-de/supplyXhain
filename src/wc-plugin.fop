@@ -1,6 +1,7 @@
 
 WordpressPlugin<"woocommerce-supplyXhain", "Woocommerce SupplyXhain Integration", "https://launix.de/launix/supplyxhain-supply-chain-neu-gedacht-das-rest-basierte-einkaufsmanagement/", "Launix, Inh. Carl-Philip Hänsch", "https://launix.de/launix/", "Integrate SupplyXhain Endpoints into your WC Shop", "0.1">.
 WordpressSetting<"woocommerce-supplyXhain", "apiurl", "SupplyXhain API Endpunkt">.
+WordpressSetting<"woocommerce-supplyXhain", "pricefactor", "Preisfaktor (Default: 1)">.
 
 
 WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini Sync-Test", "
@@ -28,6 +29,8 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 	function fop_wc_sx_sync(\$api, \$log) {
 		global \$wpdb;
+
+		\$pricefactor = doubleval(get_option('woocommerce-supplyXhain:pricefactor')) ?: 1;
 
 		if (!\$api) \$api = get_option('woocommerce-supplyXhain:apiurl');
 		if (is_string(\$api)) {
@@ -99,6 +102,9 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 				\$product->set_name(\$i18n(\$item['name']));
 				\$product->set_category_ids(array_map(function (\$x) use (\$category_map) {return \$category_map[\$x];}, \$item['categories']));
 				\$product->set_description(wp_filter_post_kses(\$i18n(\$item['detailsHTML'])));
+				if (isset(\$item['price'])) {
+					\$product->set_regular_price(\$item['price'] * \$pricefactor);
+				}
 				\$product->save();
 
 				// ensure state publish
