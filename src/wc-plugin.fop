@@ -2,6 +2,7 @@
 WordpressPlugin<"woocommerce-supplyXhain", "Woocommerce SupplyXhain Integration", "https://launix.de/launix/supplyxhain-supply-chain-neu-gedacht-das-rest-basierte-einkaufsmanagement/", "Launix, Inh. Carl-Philip Hänsch", "https://launix.de/launix/", "Integrate SupplyXhain Endpoints into your WC Shop", "0.1">.
 WordpressSetting<"woocommerce-supplyXhain", "apiurl", "SupplyXhain API Endpunkt">.
 WordpressSetting<"woocommerce-supplyXhain", "pricefactor", "Preisfaktor (Default: 1)">.
+WordpressSetting<"woocommerce-supplyXhain", "catalogparams", "Katalog-Parameter (z.B.: categories=1-3,6)">.
 
 
 WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini Sync-Test", "
@@ -81,7 +82,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 		\$article_map = [];
 		\$page = 0;
 		while (true) {
-			\$catalog = json_decode(file_get_contents(\$api['catalog_url'] . '?page=' . \$page), true);
+			\$catalog = json_decode(file_get_contents(\$api['catalog_url'] . '?page=' . \$page . '&' . get_option('woocommerce-supplyXhain:catalogparams')), true);
 			if (!\$catalog) break;
 
 			\$log('Loading '.count(\$catalog['items']) . ' articles');
@@ -122,8 +123,8 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 						array_push(\$piclist, \$picid);
 					}
 				}
+				if (count(\$piclist)) \$product->set_image_id(array_shift(\$piclist));
 				\$product->set_gallery_image_ids(\$piclist);
-				if (count(\$piclist)) \$product->set_image_id(\$piclist[0]);
 				\$product->save();
 
 				// ensure state publish
@@ -140,10 +141,10 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 		\$wpdb->query('START TRANSACTION');
 		// unpublish products with sx_id that are not in article_map
-		\$posts = \$wpdb->get_results('SELECT post_id FROM `'.\$wpdb->prefix.'postmeta` WHERE meta_key = \\'sx_id\\' AND NOT meta_value IN (' . implode(',',array_keys(\$article_map)) . ')');
+		\$posts = \$wpdb->get_results('SELECT post_id FROM `'.\$wpdb->prefix.'postmeta` WHERE meta_key = \\'sx_id\\' AND NOT meta_value IN (' . implode(',',array_keys(\$article_map)) . ') AND post_id IN (SELECT ID FROM `'.\$wpdb->prefix.'posts` WHERE post_type = \\'product\\' AND post_status = \\'publish\\')');
 		foreach (\$posts AS \$post) {
 			\$log('disable '.\$post->post_id);
-			wp_update_post(['ID' => \$post->post_id, 'post_status' => 'draft']);
+			wp_update_post(['ID' => \$post->post_id, 'post_status' => 'trash']);
 		}
 		\$wpdb->query('COMMIT');
 		\$log('Import done');
