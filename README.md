@@ -5,7 +5,7 @@ SupplyChain is a open REST API that lets you integrate all sorts of shops and ma
 
 | Market / Shop | Article Synchronization | Orders / Fulfillment |
 | --- | :---: | :---: |
-| WooCommerce | in progress | planned |
+| WooCommerce | finished | in progress |
 | ebay | planned | planned |
 | amazon | planned | planned |
 | ShopWare | planned | planned |
@@ -14,8 +14,8 @@ SupplyChain is a open REST API that lets you integrate all sorts of shops and ma
 The following ERP systems already support SupplyXhain:
 | ERP System | Article Synchronization | Orders / Fulfillment |
 | --- | :---: | :---: |
-| Standalone Client | in progress | planned |
-| Launix ERPL | in progress | planned |
+| Standalone Client | finished | in progress |
+| Launix ERPL | finished | in progress |
 | SAP | planned | planned |
 | Lexware | planned | planned |
 | billbee | planned | planned |
