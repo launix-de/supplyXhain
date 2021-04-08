@@ -4,7 +4,9 @@ WordpressSetting<"woocommerce-supplyXhain", "apiurl", "SupplyXhain API Endpunkt"
 WordpressSetting<"woocommerce-supplyXhain", "pricefactor", "Preisfaktor (Default: 1)">.
 WordpressSetting<"woocommerce-supplyXhain", "catalogparams", "Katalog-Parameter (z.B.: categories=1-3,6)">.
 
-WordpressSettingBeforeHTML<"woocommerce-supplyXhain", "<a href=\"<?php echo esc_attr(get_site_url(null, 'wp-admin/options-general.php?page=woocommerce-supplyXhain_sync')); ?>\">Test-Sync</a>">.
+WordpressSettingBeforeHTML<"woocommerce-supplyXhain", "
+	<a href=\"<?php echo esc_attr(get_site_url(null, 'wp-admin/options-general.php?page=woocommerce-supplyXhain_sync')); ?>\">Test-Sync</a><br>
+	Cron Sync URL: <input type=\"text\" readonly value=\"<?php echo esc_attr(get_site_url(null, 'wp-json/sx/sync')); ?>\"> (please call it whenever you need)">.
 WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini Sync-Test", "
 	?>
 	<div class='wrap'>
@@ -28,12 +30,16 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 ">.
 
 Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
-	function fop_wc_sx_sync(\$api, \$log) {
+	add_action('rest_api_init', function () {
+			  register_rest_route('sx', 'sync', ['methods' => 'GET', 'callback' => 'fop_wc_sx_sync']);
+	});
+
+	function fop_wc_sx_sync(\$api = null, \$log = null) {
 		global \$wpdb;
 
 		\$pricefactor = doubleval(json_decode(str_replace(',', '.', get_option('woocommerce-supplyXhain:pricefactor')))) ?: 1;
 
-		if (!\$api) \$api = get_option('woocommerce-supplyXhain:apiurl');
+		if (!\$api || \$api instanceof WP_REST_Request) \$api = get_option('woocommerce-supplyXhain:apiurl');
 		if (is_string(\$api)) {
 			\$api = file_get_contents(\$api);
 			if (!\$api) return false;
