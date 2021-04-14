@@ -36,6 +36,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 	function fop_wc_sx_sync(\$api = null, \$log = null) {
 		global \$wpdb;
+		set_time_limit(0);
 
 		\$pricefactor = doubleval(json_decode(str_replace(',', '.', get_option('woocommerce-supplyXhain:pricefactor')))) ?: 1;
 
