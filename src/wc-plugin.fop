@@ -64,13 +64,27 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			return 'untranslated';
 		};
 
+		\$wpdb->query('START TRANSACTION');
 		\$category_map = [];
-		foreach (\$api['categories'] AS \$catid => \$catname) {
-			\$catname = \$i18n(\$catname);
+		\$wp_cat_parent = [];
+		foreach (\$api['categories'] AS \$catid => \$cat) {
+			\$catname = \$i18n(\$cat['name']);
 			\$term_ids = \$wpdb->get_results('SELECT term_id FROM `'.\$wpdb->prefix.'termmeta` WHERE meta_key = \\'sx_id\\' AND meta_value = ' . esc_sql(\$catid));
 			if (count(\$term_ids)) {
 				// found by sx_id
 				\$category_map[\$catid] = \$term_ids[0]->term_id;
+				\$term = get_term(\$term_ids[0]->term_id, 'product_cat'); // update title ->name, ->parent
+				if (\$term->name != \$catname) {
+					// update name
+					wp_update_term(\$term->term_id, 'product_cat', ['name' => \$catname]);
+				}
+				/* remove parent if cat has no parent */
+				if (\$term->parent && !isset(\$cat['parent'])) {
+					wp_update_term(\$term->term_id, 'product_cat', ['parent' => 0]);
+				} else if (\$term->parent) {
+					/* remember parent so we dont have to trigger an sql update later */
+					\$wp_cat_parent[\$term->term_id] = \$term->parent;
+				}
 			} else {
 				\$term = get_term_by('name', \$catname, 'product_cat');
 				if (\$term) {
@@ -87,6 +101,13 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 				}
 			}
 		}
+		/* update categorie-parents */
+		foreach (\$api['categories'] AS \$catid => \$cat) {
+			if (isset(\$cat['parent']) && (!isset(\$wp_cat_parent[\$category_map[\$catid]]) || \$wp_cat_parent[\$category_map[\$catid]] != \$category_map[\$cat['parent']])) {
+					wp_update_term(\$category_map[\$catid], 'product_cat', ['parent' => \$category_map[\$cat['parent']]]);
+			}
+		}
+		\$wpdb->query('COMMIT');
 		\$log('Category mapping: ' . json_encode(\$category_map));
 
 		\$store = new WC_Data_Store('product');
