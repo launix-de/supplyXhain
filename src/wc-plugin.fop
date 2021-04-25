@@ -3,6 +3,7 @@ WordpressPlugin<"woocommerce-supplyXhain", "Woocommerce SupplyXhain Integration"
 WordpressSetting<"woocommerce-supplyXhain", "apiurl", "SupplyXhain API Endpunkt">.
 WordpressSetting<"woocommerce-supplyXhain", "pricefactor", "Preisfaktor (Default: 1)">.
 WordpressSetting<"woocommerce-supplyXhain", "catalogparams", "Katalog-Parameter (z.B.: categories=1-3,6)">.
+WordpressSetting<"woocommerce-supplyXhain", "token", "Auth-Token">.
 
 WordpressSettingBeforeHTML<"woocommerce-supplyXhain", "
 	<a href=\"<?php echo esc_attr(get_site_url(null, 'wp-admin/options-general.php?page=woocommerce-supplyXhain_sync')); ?>\">Test-Sync</a><br>
@@ -14,16 +15,15 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 	<div>
 		<?php
 			\$apiurl = get_option('woocommerce-supplyXhain:apiurl');
-			\$api = file_get_contents(\$apiurl);
-			if (!\$api) {
+			\$api = wp_remote_get(\$apiurl);
+			if (is_wp_error(\$api)) {
 				echo 'Fehler! API Endpunkt konnte nicht geladen werden';
-			} else {
-				\$api = json_decode(\$api, true);
-				echo 'API Vendor: ' . esc_html(\$api['vendor']) . '<br>';
-				fop_wc_sx_sync(\$api, function (\$msg) {
-					echo esc_html(\$msg) . '<br>';
-				});
 			}
+			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+			echo 'API Vendor: ' . esc_html(\$api['vendor']) . '<br>';
+			fop_wc_sx_sync(\$api, function (\$msg) {
+				echo esc_html(\$msg) . '<br>';
+			});
 		?>
 	</div>	
 	<?php
@@ -33,6 +33,10 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 	add_action('rest_api_init', function () {
 			  register_rest_route('sx', 'sync', ['methods' => 'GET', 'callback' => 'fop_wc_sx_sync']);
 	});
+	add_action('woocommerce_payment_complete', function() {
+		// sync all orders after every payment
+		fop_wc_sx_sync_order();
+	}, 10, 3);
 
 	function fop_wc_sx_sync(\$api = null, \$log = null) {
 		global \$wpdb;
@@ -46,9 +50,9 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 		if (!\$api || \$api instanceof WP_REST_Request) \$api = get_option('woocommerce-supplyXhain:apiurl');
 		if (is_string(\$api)) {
-			\$api = file_get_contents(\$api);
-			if (!\$api) return false;
-			\$api = json_decode(\$api, true);
+			\$api = wp_remote_get(\$api);
+			if (is_wp_error(\$api)) return false;
+			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
 		}
 
 		if (!\$log) \$log = function (\$msg) {};
@@ -114,7 +118,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 		\$article_map = [];
 		\$page = 0;
 		while (true) {
-			\$catalog = json_decode(file_get_contents(\$api['catalog_url'] . '?page=' . \$page . '&' . get_option('woocommerce-supplyXhain:catalogparams')), true);
+			\$catalog = json_decode(wp_remote_retrieve_body(wp_remote_get(\$api['catalog_url'] . '?page=' . \$page . '&' . get_option('woocommerce-supplyXhain:catalogparams'))), true);
 			if (!\$catalog) break;
 
 			\$log('Loading '.count(\$catalog['items']) . ' articles');
@@ -179,6 +183,38 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			wp_update_post(['ID' => \$post->post_id, 'post_status' => 'trash']);
 		}
 		\$wpdb->query('COMMIT');
+		fop_wc_sx_sync_order(\$api, \$log);
 		\$log('Import done');
+	}
+
+	function fop_wc_sx_sync_order(\$api = null, \$log = null) {
+		if (!\$api || \$api instanceof WP_REST_Request) \$api = get_option('woocommerce-supplyXhain:apiurl');
+		if (is_string(\$api)) {
+			\$api = wp_remote_get(\$api);
+			if (is_wp_error(\$api)) return false;
+			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+		}
+
+		if (!\$log) \$log = function (\$msg) {};
+
+		if (!isset(\$api['order_url'])) return; // API does not allow order sync
+
+		\$token = get_option('woocommerce-supplyXhain:token');
+		if (!\$token) {
+			return \$log('no token given for order API');
+		}
+
+		// TODO: put in loop -> wp_posts type=order, status = processing who dont have sx-url => POST order data, get sx-url, put it into post_meta
+		// TODO: for each order get status, set completed or processing or cancelled or or or
+		\$order = ['items' => []];
+		\$sx_order = wp_remote_post(\$api['order_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$order)]);
+		if (is_wp_error(\$sx_order)) {
+			\$log();
+		} else {
+			// retrieve Order URL
+			\$sx_order = wp_remote_retrieve_body(\$sx_order);
+			// TODO: json: {\"error\": \"accessdenied\"}
+			\$log('order = ' . \$sx_order);
+		}
 	}
 ">.

@@ -90,6 +90,7 @@ When GETting the supplyXhain URL, basic vendor information about the vendor as w
 	currency: string,
 	catalog_url: string,
 	quote_url: string,
+	order_url: string,
 	categories: {*: {
 		name: i18nstring,
 		parent?: string,
@@ -205,3 +206,12 @@ quoteItem := {
 
 Order Endpoint
 --------------
+
+A order endpoint will receive POST Requests containing a order descriptor. API users might have to authenticate via Bearer method. A order consists of follosing:
+
+```
+{
+	items: [orderItem]
+}
+```
+
