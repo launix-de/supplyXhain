@@ -252,3 +252,13 @@ Remarks:
 - `single_net_price` is net and single
 - `tax_rate` is in percent.
 - gross total is `quantity * single_net_price * (1 + tax_rate / 100.0)`
+
+POSTing an order will return a single string containing a URL to retrieve current order status data of the form:
+
+```
+{
+	id: string,
+	state: 'pending' | 'cancelled' | 'delivered-partially' | 'delivered'
+}
+```
+

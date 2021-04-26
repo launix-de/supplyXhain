@@ -207,11 +207,11 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 		// check all wp_posts type=shop_order, status = wc-processing who dont have sx-url => POST order data, get sx-url, put it into post_meta
 		\$orders = get_posts(['post_type' => 'shop_order', 'post_status' => 'wc-processing']);
 		foreach (\$orders AS \$wp_order) {
+			\$wc_order = new WC_Order(\$wp_order->ID);
 			\$order_url = get_post_meta(\$wp_order->ID, 'sx-url', true);
 			if (!\$order_url) {
 				/* submit order to sx endpoint */
 				// TODO: build \$order from wc order
-				\$wc_order = new WC_Order(\$wp_order->ID);
 				\$order = [
 					'billing' => [
 						'first_name' => \$wc_order->get_billing_first_name(),
@@ -272,20 +272,29 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 						continue; // expect URL to be string, not json
 					}
 					\$log('submitted order: ' . \$order_url);
-					/* TODO: activate once it works; persisting is deactivated for dev testing */
-					// update_post_meta(\$wp_order->ID, 'sx-url', \$order_url);
+					update_post_meta(\$wp_order->ID, 'sx-url', \$order_url);
 				}
 			}
-		}
 
-		/* retrieve current order object and update status */
-		\$order_data = wp_remote_get(\$order_url, ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json']]);
-		if (is_wp_error(\$order_url)) {
-			\$log('failed to retrieve order data from API: ' . \$order_url);
-		} else if (!(\$order_data = json_decode(wp_remote_retrieve_body(\$sx_order), true))) {
-			\$log('failed to retrieve order data from API: ' . \$order_url);
-		} else {
-			\$log('TODO: ' . json_encode(\$order_data));
+			/* retrieve current order object and update status */
+			\$order_data = wp_remote_get(\$order_url, ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json']]);
+			if (is_wp_error(\$order_data)) {
+				\$log('failed to retrieve order data from API: ' . \$order_url);
+			} else if (!(\$order_data = json_decode(wp_remote_retrieve_body(\$order_data), true))) {
+				\$log('failed to retrieve order data from API: ' . \$order_url);
+			} else {
+				if (\$order_data['state'] == 'delivered') {
+					// mark as finished
+					\$wc_order->update_status('wc-completed', 'SupplyXhain update');
+					\$log('completed order: ' . json_encode(\$order_data));
+				} else if (\$order_data['state'] == 'cancelled') {
+					// mark as cancelled
+					\$wc_order->update_status('wc-cancelled', 'SupplyXhain update');
+					\$log('cancelled order: ' . json_encode(\$order_data));
+				} else {
+					\$log('pending order: ' . json_encode(\$order_data));
+				}
+			}
 		}
 	}
 ">.
