@@ -10,6 +10,7 @@ SupplyChain is a open REST API that lets you integrate all sorts of shops and ma
 | amazon | planned | planned |
 | ShopWare | planned | planned |
 | Magento | planned | planned |
+| speed4trade | planned | planned |
 
 The following ERP systems already support SupplyXhain:
 | ERP System | Article Synchronization | Orders / Fulfillment |
@@ -211,7 +212,43 @@ A order endpoint will receive POST Requests containing a order descriptor. API u
 
 ```
 {
-	items: [orderItem]
+	'billing': {
+		'first_name': string,
+		'last_name': string,
+		'company': string,
+		'address1': string,
+		'address2': string,
+		'city': string,
+		'state': string,
+		'postcode': string,
+		'country': string,
+		'email': string,
+		'phone': string
+	},
+	'shipping': {
+		'first_name': string,
+		'last_name': string,
+		'company': string,
+		'address1': string,
+		'address2': string,
+		'city': string,
+		'state': string
+		'postcode': string,
+		'country': string,
+	},
+	'items' => [
+		{
+			'name': string,
+			'quantity': number,
+			'single_net_price': number,
+			'tax_rate': number,
+			product?: string
+		}
+	]
 }
 ```
 
+Remarks:
+- `single_net_price` is net and single
+- `tax_rate` is in percent.
+- gross total is `quantity * single_net_price * (1 + tax_rate / 100.0)`

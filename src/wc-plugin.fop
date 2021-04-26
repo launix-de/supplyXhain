@@ -22,7 +22,7 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
 			echo 'API Vendor: ' . esc_html(\$api['vendor']) . '<br>';
 			fop_wc_sx_sync(\$api, function (\$msg) {
-				echo esc_html(\$msg) . '<br>';
+				echo '<pre>' . esc_html(\$msg) . '</pre>';
 			});
 		?>
 	</div>	
@@ -204,15 +204,58 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			return \$log('no token given for order API');
 		}
 
-		// TODO: put in loop -> wp_posts type=order, status = processing who dont have sx-url => POST order data, get sx-url, put it into post_meta
+		// check all wp_posts type=shop_order, status = wc-processing who dont have sx-url => POST order data, get sx-url, put it into post_meta
 		\$orders = get_posts(['post_type' => 'shop_order', 'post_status' => 'wc-processing']);
 		foreach (\$orders AS \$wp_order) {
-			\$log(json_encode(\$wp_order));
 			\$order_url = get_post_meta(\$wp_order->ID, 'sx-url', true);
 			if (!\$order_url) {
 				/* submit order to sx endpoint */
 				// TODO: build \$order from wc order
-				\$order = ['items' => []];
+				\$wc_order = new WC_Order(\$wp_order->ID);
+				\$order = [
+					'billing' => [
+						'first_name' => \$wc_order->get_billing_first_name(),
+						'last_name' => \$wc_order->get_billing_last_name(),
+						'company' => \$wc_order->get_billing_company(),
+						'address1' => \$wc_order->get_billing_address_1(),
+						'address2' => \$wc_order->get_billing_address_2(),
+						'city' => \$wc_order->get_billing_city(),
+						'state' => \$wc_order->get_billing_state(),
+						'postcode' => \$wc_order->get_billing_postcode(),
+						'country' => \$wc_order->get_billing_country(),
+						'email' => \$wc_order->get_billing_email(),
+						'phone' => \$wc_order->get_billing_phone()
+					],
+					'shipping' => [
+						'first_name' => \$wc_order->get_shipping_first_name(),
+						'last_name' => \$wc_order->get_shipping_last_name(),
+						'company' => \$wc_order->get_shipping_company(),
+						'address1' => \$wc_order->get_shipping_address_1(),
+						'address2' => \$wc_order->get_shipping_address_2(),
+						'city' => \$wc_order->get_shipping_city(),
+						'state' => \$wc_order->get_shipping_state(),
+						'postcode' => \$wc_order->get_shipping_postcode(),
+						'country' => \$wc_order->get_shipping_country()
+					],
+					'items' => []
+				];
+				foreach (\$wc_order->get_items(['line_item', 'fee', 'coupon', 'shipping']) AS \$item) {
+					\$sx_item = [
+						'name' => \$item->get_name(),
+						'quantity' => \$item->get_quantity() ?? 1,
+						'single_net_price' => round(\$item->get_total() / (\$item->get_quantity() ?? 1), 1),
+						'tax_rate' => round(100 * (\$item->get_total_tax() / \$item->get_total()))
+					];
+					if (\$item instanceof WC_Order_Item_Product) {
+						\$product = \$item->get_product_id();
+						if (\$product) {
+							\$product = get_post_meta(\$product, 'sx_id', true);
+						}
+						\$sx_item['product'] = \$product; // sx_id of product
+					}
+					array_push(\$order['items'], \$sx_item);
+				}
+
 				\$order_url = wp_remote_post(\$api['order_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$order)]);
 				if (is_wp_error(\$order_url)) {
 					\$log('failed to submit order to API');
