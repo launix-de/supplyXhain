@@ -205,16 +205,44 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 		}
 
 		// TODO: put in loop -> wp_posts type=order, status = processing who dont have sx-url => POST order data, get sx-url, put it into post_meta
-		// TODO: for each order get status, set completed or processing or cancelled or or or
-		\$order = ['items' => []];
-		\$sx_order = wp_remote_post(\$api['order_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$order)]);
-		if (is_wp_error(\$sx_order)) {
-			\$log();
+		\$orders = get_posts(['post_type' => 'shop_order', 'post_status' => 'wc-processing']);
+		foreach (\$orders AS \$wp_order) {
+			\$log(json_encode(\$wp_order));
+			\$order_url = get_post_meta(\$wp_order->ID, 'sx-url', true);
+			if (!\$order_url) {
+				/* submit order to sx endpoint */
+				// TODO: build \$order from wc order
+				\$order = ['items' => []];
+				\$order_url = wp_remote_post(\$api['order_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$order)]);
+				if (is_wp_error(\$order_url)) {
+					\$log('failed to submit order to API');
+					continue;
+				} else {
+					// retrieve Order URL
+					\$order_url = wp_remote_retrieve_body(\$order_url);
+					if (\$order_url[0] == '{') {
+						// json: {\"error\": \"accessdenied\"}
+						\$order_url = json_decode(\$order_url, true);
+						if (isset(\$order_url['error'])) {
+							\$log(\$order_url['error']); // error
+						}
+						continue; // expect URL to be string, not json
+					}
+					\$log('submitted order: ' . \$order_url);
+					/* TODO: activate once it works; persisting is deactivated for dev testing */
+					// update_post_meta(\$wp_order->ID, 'sx-url', \$order_url);
+				}
+			}
+		}
+
+		/* retrieve current order object and update status */
+		\$order_data = wp_remote_get(\$order_url, ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json']]);
+		if (is_wp_error(\$order_url)) {
+			\$log('failed to retrieve order data from API: ' . \$order_url);
+		} else if (!(\$order_data = json_decode(wp_remote_retrieve_body(\$sx_order), true))) {
+			\$log('failed to retrieve order data from API: ' . \$order_url);
 		} else {
-			// retrieve Order URL
-			\$sx_order = wp_remote_retrieve_body(\$sx_order);
-			// TODO: json: {\"error\": \"accessdenied\"}
-			\$log('order = ' . \$sx_order);
+			\$log('TODO: ' . json_encode(\$order_data));
 		}
 	}
 ">.
