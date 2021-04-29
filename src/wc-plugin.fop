@@ -297,4 +297,107 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			}
 		}
 	}
+
+/* shipping */
+function fop_wc_sx_shipping_method_init() {
+    class WC_FOP_SX_Shipping_Method extends WC_Shipping_Method {
+        /**
+         * Constructor for your shipping class
+         *
+         * @access public
+         * @return void
+         */
+        public function __construct() {
+            \$this->id                 = 'fop_wc_sx_shipping_method';
+            \$this->method_title       = __('SupplyXhain Shipping cost query');
+            \$this->method_description = __('Please disable all other shipping methods unless you are aware what you are doing');
+            \$this->enabled            = 'yes'; // This can be added as an setting but for this example its forced enabled
+            \$this->init();
+        }
+
+        /**
+         * Init your settings
+         *
+         * @access public
+         * @return void
+         */
+        function init() {
+            // Load the settings API
+            \$this->init_form_fields(); // This is part of the settings API. Override the method to add your own settings
+            \$this->init_settings(); // This is part of the settings API. Loads settings you previously init.
+
+            // Save settings in admin if you have any defined
+            add_action( 'woocommerce_update_options_shipping_' . \$this->id, array( \$this, 'process_admin_options' ) );
+        }
+
+        /**
+         * calculate_shipping function.
+         *
+         * @access public
+         * @param mixed \$package
+         * @return void
+         */
+        public function calculate_shipping(\$package = array()) {
+			  \$api = get_option('woocommerce-supplyXhain:apiurl');
+				if (is_string(\$api)) {
+					\$api = wp_remote_get(\$api);
+					if (is_wp_error(\$api)) return false;
+					\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+				}
+
+				if (!isset(\$api['quote_url'])) {
+					return; // API does not offer quote
+				}
+				\$token = get_option('woocommerce-supplyXhain:token') == '';
+
+			  // This is where you'll add your rates
+			  \$items = [];
+			  foreach (\$package['contents'] AS \$key => \$item) {
+				  \$pid = \$item['product_id'] ?? null;
+				  if (\$pid) {
+					  \$pid = get_post_meta(\$pid, 'sx_id', true);
+				  }
+
+				  if (\$pid) {
+					  array_push(\$items, [
+						'product' => \$pid,
+						'quantity' => \$item['quantity'],
+						'single_net_price' => \$item['line_total'] / \$item['quantity'],
+						'tax_rate' => \$item['line_tax'] / \$item['line_total']
+					  ]);
+				  }
+			  }
+			  \$request = [
+			  	'address' => \$package['destination'],
+				'items' => \$items
+			  ];
+				\$answer = wp_remote_post(\$api['quote_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$request)]);
+				if (is_wp_error(\$answer)) {
+					error_log('failed to quote to API');
+					return;
+				} else {
+					// retrieve Order URL
+					\$answer = json_decode(wp_remote_retrieve_body(\$answer), true);
+					foreach (\$answer['items'] AS \$item) {
+						if (\$item['isShiping'] ?? false) {
+							\$rate = [
+								'label' => \$item['name'],
+								'cost' => (\$item['quantity'] ?? 1) * \$item['single_net_price']
+							];
+							\$this->add_rate(\$rate);
+						}
+					}
+				}
+        }
+    }
+}
+
+
+add_action('woocommerce_shipping_init', 'fop_wc_sx_shipping_method_init');
+add_filter('woocommerce_shipping_methods', function (\$methods) {
+    \$methods['fop_wc_sx_shipping_method'] = 'WC_FOP_SX_Shipping_Method';
+    return \$methods;
+});
+
+
 ">.

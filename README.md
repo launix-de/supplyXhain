@@ -153,57 +153,50 @@ i18nstrings are associative arrays assigning a text for each language. Languages
 Quote Endpoint
 --------------
 
-A request to a quote endpoint will provide a basket to the vendor where he can set prices for each item. The request payload is as follows:
+A request to a quote endpoint will provide a basket to the vendor where he can set prices for each item (e.g. discounts) as well as shipping cost. The request payload is as follows:
 
 ```
 {
-	items: [requestItem],
-	deliveryTime?: date,
-	deliveryPenaltyPerDay?: number
+   address: {
+      'first_name': string,
+      'last_name': string,
+      'company': string,
+      'address1': string,
+      'address2': string,
+      'city': string,
+      'state': string,
+      'postcode': string,
+      'country': string
+   },
+   items: [
+      {
+         name?: string,
+         product: string | null,
+         quantity: number,
+         single_net_price?: number,
+         tax_rate?: number
+      }
+   ]
 }
 ```
 
-where
-
-```
-date := /[0-9]{4}-[0-9]{2}-[0-9]{2}/
-
-requestItem := {
-	article: string /* article id here */,
-	amount: number,
-	parameters: {*: *}
-}
-```
-
-With a quote, the customer can request a delivery time and back it with a penalty so the vendor will pay every day he is too late in delivery. Of course, the vendor can deny such penalty request but he would be better off raising the price to a certain amount to cover the risk.
-
-The vendor will answer as follows:
-
+The output reflects the basket, adds prices and shipping costs:
 ```
 {
-	items: [quoteItem],
-	deliveryTime: date,
-	deliveryPenaltyPerDay: number,
-
-	shipment: number,
-	totalNet: number,
-	totalGross: number
+	items: [
+         {
+            name: string,
+            product?: string | null,
+            quantity?: number,
+            single_net_price: number,
+            tax_rate?: number,
+				isShiping: true | false
+         }
+   ]
 }
 ```
 
-where
-
-```
-quoteItem := {
-	article: string,
-	amount: number,
-	parameters: {*: *},
-	singleListPrice?: number,
-	tax: number,
-	total: number,
-}
-```
-
+With a quote, the customer could also request a delivery time and back it with a penalty so the vendor will pay every day he is too late in delivery. Of course, the vendor can deny such penalty request but he would be better off raising the price to a certain amount to cover the risk.
 
 Order Endpoint
 --------------
@@ -236,7 +229,7 @@ A order endpoint will receive POST Requests containing a order descriptor. API u
 		'postcode': string,
 		'country': string,
 	},
-	'items' => [
+	'items': [
 		{
 			'name': string,
 			'quantity': number,
