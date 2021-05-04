@@ -379,7 +379,7 @@ function fop_wc_sx_shipping_method_init() {
 					// retrieve Order URL
 					\$answer = json_decode(wp_remote_retrieve_body(\$answer), true);
 					foreach (\$answer['items'] AS \$item) {
-						if (\$item['isShiping'] ?? false) {
+						if (\$item['isShipping'] ?? false) {
 							\$rate = [
 								'label' => \$item['name'],
 								'cost' => (\$item['quantity'] ?? 1) * \$item['single_net_price']
