@@ -348,7 +348,7 @@ function fop_wc_sx_shipping_method_init() {
 				if (!isset(\$api['quote_url'])) {
 					return; // API does not offer quote
 				}
-				\$token = get_option('woocommerce-supplyXhain:token') == '';
+				\$token = get_option('woocommerce-supplyXhain:token');
 
 			  // This is where you'll add your rates
 			  \$items = [];
