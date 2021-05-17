@@ -176,7 +176,8 @@ A request to a quote endpoint will provide a basket to the vendor where he can s
          single_net_price?: number,
          tax_rate?: number
       }
-   ]
+   ],
+   downloadPDF?: boolean
 }
 ```
 
@@ -192,11 +193,14 @@ The output reflects the basket, adds prices and shipping costs:
             tax_rate?: number,
 				isShiping: true | false
          }
-   ]
+   ],
+   url?: string
 }
 ```
 
 With a quote, the customer could also request a delivery time and back it with a penalty so the vendor will pay every day he is too late in delivery. Of course, the vendor can deny such penalty request but he would be better off raising the price to a certain amount to cover the risk.
+
+In case you set `downloadPDF` to true, the order function will return a download URL in `url` (this URL may also have to be authenticated, so a ecommerce plugin should download the file with proper auth and then send it to the user).
 
 Order Endpoint
 --------------

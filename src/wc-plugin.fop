@@ -407,6 +407,67 @@ add_action('woocommerce_cart_actions', function () {
 	<?php
 });
 
+add_action('wp_loaded', function () { if (isset(\$_REQUEST['download_pdf_cart'])) { \$_REQUEST['update_cart'] = true; } }, 19); // trigger cart update
+add_action('wp_loaded', 'fop_wc_sx_download_pdf', 21);
+function fop_wc_sx_download_pdf() {
+	if (!isset(\$_REQUEST['download_pdf_cart'])) {
+		return;
+	}
+	\$packages = WC()->cart->get_shipping_packages();
+	if (!count(\$packages) == 1) die('Ein unerwarteter Fehler trat auf.');
+	\$package = \$packages[0];
 
+	\$api = get_option('woocommerce-supplyXhain:apiurl');
+	if (is_string(\$api)) {
+		\$api = wp_remote_get(\$api);
+		if (is_wp_error(\$api)) return false;
+		\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+	}
 
+	if (!isset(\$api['quote_url'])) {
+		return; // API does not offer quote
+	}
+	\$token = get_option('woocommerce-supplyXhain:token');
+
+	// This is where you'll add your rates
+	\$items = [];
+	foreach (\$package['contents'] AS \$key => \$item) {
+		\$pid = \$item['product_id'] ?? null;
+		if (\$pid) {
+		  \$pid = get_post_meta(\$pid, 'sx_id', true);
+		}
+
+		if (\$pid) {
+			array_push(\$items, [
+				'product' => \$pid,
+				'quantity' => \$item['quantity'],
+				'single_net_price' => \$item['line_total'] / \$item['quantity'],
+				'tax_rate' => \$item['line_tax'] / \$item['line_total']
+			]);
+		}
+	}
+	\$request = [
+		'address' => \$package['destination'],
+		'items' => \$items,
+		'downloadPDF' => true
+	];
+	\$answer = wp_remote_post(\$api['quote_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$request)]);
+	if (is_wp_error(\$answer)) {
+		error_log('failed to quote to API');
+		return;
+	} else {
+		// retrieve Order URL
+		\$answer = json_decode(wp_remote_retrieve_body(\$answer), true);
+		if (isset(\$answer['url'])) {
+			\$data = wp_remote_get(\$answer['url'], ['headers' => ['Authorization' => 'Bearer ' . \$token]]);
+			\$response_body = wp_remote_retrieve_body(\$data);
+			header('Content-type: application/pdf');
+			header('Content-disposition: attachment;filename=angebot.pdf');
+			echo \$response_body;
+			die();
+		} else {
+			die('SupplyXhain endpoint does not provide PDF file');
+		}
+	}
+}
 ">.
