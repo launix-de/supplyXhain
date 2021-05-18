@@ -424,8 +424,8 @@ function fop_wc_sx_download_pdf() {
 		\$api = json_decode(wp_remote_retrieve_body(\$api), true);
 	}
 
-	if (!isset(\$api['quote_url'])) {
-		return; // API does not offer quote
+	if (!isset(\$api['quote_url']) || !(\$api['quote_pdf'] ?? false)) {
+		die('SupplyXhain endpoint does not provide PDF download');
 	}
 	\$token = get_option('woocommerce-supplyXhain:token');
 
@@ -458,8 +458,8 @@ function fop_wc_sx_download_pdf() {
 	} else {
 		// retrieve Order URL
 		\$answer = json_decode(wp_remote_retrieve_body(\$answer), true);
-		if (isset(\$answer['url'])) {
-			\$data = wp_remote_get(\$answer['url'], ['headers' => ['Authorization' => 'Bearer ' . \$token]]);
+		if (isset(\$answer['pdf_url'])) {
+			\$data = wp_remote_get(\$answer['pdf_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token]]);
 			\$response_body = wp_remote_retrieve_body(\$data);
 			header('Content-type: application/pdf');
 			header('Content-disposition: attachment;filename=angebot.pdf');

@@ -91,6 +91,7 @@ When GETting the supplyXhain URL, basic vendor information about the vendor as w
 	currency: string,
 	catalog_url: string,
 	quote_url: string,
+	quote_pdf?: boolean,
 	order_url: string,
 	categories: {*: {
 		name: i18nstring,
@@ -102,6 +103,10 @@ When GETting the supplyXhain URL, basic vendor information about the vendor as w
 
 i18nstring := string | {de_DE: string, de: string, en_US: string, en: string, ...}
 ```
+
+- `catalog_url` leads to the catalog endpoint
+- `quote_url` leads to the quote endpoint. If `quote_pdf` is true, you will be able to retrieve a quote PDF
+- `order_url` leads to the order endpoint
 
 Catalog Endpoint
 ----------------
@@ -194,7 +199,7 @@ The output reflects the basket, adds prices and shipping costs:
 				isShiping: true | false
          }
    ],
-   url?: string
+   pdf_url?: string
 }
 ```
 
