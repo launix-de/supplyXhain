@@ -378,15 +378,17 @@ function fop_wc_sx_shipping_method_init() {
 				} else {
 					// retrieve Order URL
 					\$answer = json_decode(wp_remote_retrieve_body(\$answer), true);
+					\$label = [];
+					\$price = 0;
 					foreach (\$answer['items'] AS \$item) {
 						if (\$item['isShipping'] ?? false) {
-							\$rate = [
-								'label' => \$item['name'],
-								'cost' => (\$item['quantity'] ?? 1) * \$item['single_net_price']
-							];
-							\$this->add_rate(\$rate);
+							array_push(\$label, \$item['name']);
+							\$price += (\$item['quantity'] ?? 1) * \$item['single_net_price'];
 						}
 					}
+					\$label = implode(', ', array_unique(\$label)) ?: 'Versandkostenfrei'; // TODO: i18n
+					// SX rate for Woocommerce
+					\$this->add_rate(['label' => \$label, 'cost' => \$price]);
 				}
 			}
 	}
