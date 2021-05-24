@@ -149,6 +149,9 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 				\$product->set_name(\$i18n(\$item['name']));
 				\$product->set_category_ids(array_map(function (\$x) use (\$category_map) {return \$category_map[\$x];}, \$item['categories']));
 				\$product->set_description(wp_filter_post_kses(\$i18n(\$item['detailsHTML'])));
+				if (isset(\$item['quantity'])) { // stock quantity
+					\$product->set_stock_quantity(\$item['quantity']);
+				}
 				if (isset(\$item['price'])) { // price
 					\$product->set_regular_price(\$item['price'] * \$pricefactor);
 				}

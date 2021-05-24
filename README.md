@@ -139,7 +139,8 @@ article := {
 	price?: number, /* list price - price in offer may differ; this should be the maximum expected price for this item */
 	pictures?: [picture], /* pictures */
 	categories?: [string], /* category id list */
-	detailURL?: string
+	detailURL?: string,
+	quantity?: number /* stock quanitity */
 }
 
 i18nstring := {*: string}
