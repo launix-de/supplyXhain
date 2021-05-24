@@ -14,12 +14,7 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 	<h1>Woocommerce SupplyXhain Sync</h1>
 	<div>
 		<?php
-			\$apiurl = get_option('woocommerce-supplyXhain:apiurl');
-			\$api = wp_remote_get(\$apiurl);
-			if (is_wp_error(\$api)) {
-				echo 'Fehler! API Endpunkt konnte nicht geladen werden';
-			}
-			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+			\$api = fop_wc_sx_api();
 			echo 'API Vendor: ' . esc_html(\$api['vendor']) . '<br>';
 			fop_wc_sx_sync(\$api, function (\$msg) {
 				echo '<pre>' . esc_html(\$msg) . '</pre>';
@@ -30,6 +25,26 @@ WordpressAdminMenu<"woocommerce-supplyXhain", "sync", "Woocommerce-SupplyXhaini 
 ">.
 
 Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
+	function fop_wc_sx_api(\$apiurl = '') {
+		if (\$api instanceof WP_REST_Request) \$api = '';
+		if (!\$apiurl) {
+			\$apiurl = get_option('woocommerce-supplyXhain:apiurl');
+		}
+		if (is_string(\$apiurl)) {
+			\$api = wp_remote_get(\$apiurl);
+			if (is_wp_error(\$api)) {
+				throw new \\Exception('Fehler! API Endpunkt konnte nicht geladen werden');
+			}
+			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
+			if (!\$api) {
+				throw new \\Exception('Fehler! API Endpunkt konnte dekodiert geladen werden');
+			}
+		} else {
+			\$api = \$apiurl; // api objekt wurde übergeben
+		}
+		return \$api;
+	}
+
 	add_action('rest_api_init', function () {
 			  register_rest_route('sx', 'sync', ['methods' => 'GET', 'callback' => 'fop_wc_sx_sync']);
 	});
@@ -48,12 +63,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 
 		\$pricefactor = doubleval(json_decode(str_replace(',', '.', get_option('woocommerce-supplyXhain:pricefactor')))) ?: 1;
 
-		if (!\$api || \$api instanceof WP_REST_Request) \$api = get_option('woocommerce-supplyXhain:apiurl');
-		if (is_string(\$api)) {
-			\$api = wp_remote_get(\$api);
-			if (is_wp_error(\$api)) return false;
-			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
-		}
+		\$api = fop_wc_sx_api(\$api);
 
 		if (!\$log) \$log = function (\$msg) {};
 
@@ -188,12 +198,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 	}
 
 	function fop_wc_sx_sync_order(\$api = null, \$log = null) {
-		if (!\$api || \$api instanceof WP_REST_Request) \$api = get_option('woocommerce-supplyXhain:apiurl');
-		if (is_string(\$api)) {
-			\$api = wp_remote_get(\$api);
-			if (is_wp_error(\$api)) return false;
-			\$api = json_decode(wp_remote_retrieve_body(\$api), true);
-		}
+		\$api = fop_wc_sx_api(\$api);
 
 		if (!\$log) \$log = function (\$msg) {};
 
@@ -338,12 +343,7 @@ function fop_wc_sx_shipping_method_init() {
 		 * @return void
 		 */
 		public function calculate_shipping(\$package = array()) {
-				\$api = get_option('woocommerce-supplyXhain:apiurl');
-				if (is_string(\$api)) {
-					\$api = wp_remote_get(\$api);
-					if (is_wp_error(\$api)) return false;
-					\$api = json_decode(wp_remote_retrieve_body(\$api), true);
-				}
+				\$api = fop_wc_sx_api();
 
 				if (!isset(\$api['quote_url'])) {
 					return; // API does not offer quote
@@ -368,7 +368,7 @@ function fop_wc_sx_shipping_method_init() {
 					}
 				}
 				\$request = [
-					'address' => \$package['destination'],
+					'shipping' => \$package['destination'],
 					'items' => \$items
 				];
 				\$answer = wp_remote_post(\$api['quote_url'], ['headers' => ['Authorization' => 'Bearer ' . \$token, 'Content-Type' => 'application/json'], 'body' => json_encode(\$request)]);
@@ -403,9 +403,71 @@ add_filter('woocommerce_shipping_methods', function (\$methods) {
 
 add_action('woocommerce_cart_actions', function () {
 	/* TODO: i18n or user defined button text */
-	// TODO: check if endpoint supports PDF generation
+	\$api = fop_wc_sx_api();
+	if (!(\$api['quote_pdf'] ?? false)) return; // PDF not available
 	?>
-		<button type=\"submit\" class=\"button\" name=\"download_pdf_cart\" value=\"Angebot PDF\">Angebot PDF</button>
+		<button type=\"button\" onclick=\"jQuery('#offer_form').css('display', 'flex').hide().fadeIn(); return false;\" class=\"button\" name=\"download_pdf_cart\" value=\"Angebot PDF\">Angebot PDF</button>
+	<?php
+});
+add_action('woocommerce_after_cart_table', function () {
+	?>
+	<div style='display: none; flex-direction: column;' id='offer_form'>
+	<h2>Daten auf dem Angebot</h2>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_first_name\"><?php esc_html_e( 'Billing First Name', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_first_name\" id=\"billing_first_name\" autocomplete=\"given-name\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_last_name\"><?php esc_html_e( 'Billing Last Name', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_last_name\" id=\"billing_last_name\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_company\"><?php esc_html_e( 'Billing Company', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_company\" id=\"billing_company\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_address1\"><?php esc_html_e( 'Billing Address 1', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_address1\" id=\"billing_address1\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_address2\"><?php esc_html_e( 'Billing Address 2', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_address2\" id=\"billing_address2\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_postcode\"><?php esc_html_e( 'Billing Postal/Zip Code', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_postcode\" id=\"billing_postcode\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_city\"><?php esc_html_e( 'Billing City', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_city\" id=\"billing_city\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_state\"><?php esc_html_e( 'Billing State', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_state\" id=\"billing_state\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_country\"><?php esc_html_e( 'Billing Country / Region', 'woocommerce' ); ?>&nbsp;<span class=\"required\">*</span></label>
+		<select class=\"woocommerce-Input woocommerce-Input--select input-select\" name=\"billing_country\" id=\"billing_country\">
+		<?php
+			foreach ((new \\WC_Countries)->get_countries() AS \$country_id => \$country_name) {
+				?><option value=\"<?php echo esc_attr(\$country_id); ?>\"<?php if (\$country_id == 'DE') echo ' selected'; ?>><?php echo esc_html(\$country_name); ?></option>
+				<?php
+			}
+		?>
+		</select>
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_email\"><?php esc_html_e( 'Email Address', 'woocommerce' ); ?></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--email input-text\" name=\"billing_email\" id=\"billing_email\" value=\"\" />
+	</p>
+	<p class=\"woocommerce-form-row woocommerce-form-row--first form-row form-row-first\">
+		<label for=\"billing_phone\"><?php esc_html_e( 'Phone Number', 'woocommerce' ); ?></label>
+		<input type=\"text\" class=\"woocommerce-Input woocommerce-Input--text input-text\" name=\"billing_phone\" id=\"billing_phone\" value=\"\" />
+	</p>
+	<p>
+		<button type=\"submit\" class=\"button\" name=\"download_pdf_cart\" value=\"Download Angebot PDF\">Download Angebot PDF</button>
+	</p>
+	</div>
 	<?php
 });
 
@@ -419,12 +481,7 @@ function fop_wc_sx_download_pdf() {
 	if (!count(\$packages) == 1) die('Ein unerwarteter Fehler trat auf.');
 	\$package = \$packages[0];
 
-	\$api = get_option('woocommerce-supplyXhain:apiurl');
-	if (is_string(\$api)) {
-		\$api = wp_remote_get(\$api);
-		if (is_wp_error(\$api)) return false;
-		\$api = json_decode(wp_remote_retrieve_body(\$api), true);
-	}
+	\$api = fop_wc_sx_api();
 
 	if (!isset(\$api['quote_url']) || !(\$api['quote_pdf'] ?? false)) {
 		die('SupplyXhain endpoint does not provide PDF download');
@@ -449,7 +506,20 @@ function fop_wc_sx_download_pdf() {
 		}
 	}
 	\$request = [
-		'address' => \$package['destination'],
+		'shipping' => \$package['destination'],
+		'billing' => [
+			'first_name' => \$_POST['billing_first_name'],
+			'last_name' => \$_POST['billing_last_name'],
+			'company' => \$_POST['billing_company'],
+			'address1' => \$_POST['billing_address1'],
+			'address2' => \$_POST['billing_address2'],
+			'city' => \$_POST['billing_city'],
+			'state' => \$_POST['billing_state'],
+			'postcode' => \$_POST['billing_postcode'],
+			'country' => \$_POST['billing_country'],
+			'email' => \$_POST['billing_email'],
+			'phone' => \$_POST['billing_phone']
+		],
 		'items' => \$items,
 		'downloadPDF' => true
 	];
