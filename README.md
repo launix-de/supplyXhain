@@ -11,6 +11,7 @@ SupplyChain is a open REST API that lets you integrate all sorts of shops and ma
 | ShopWare | planned | planned |
 | Magento | planned | planned |
 | speed4trade | planned | planned |
+| Launix ERPL purchase module | planned | planned |
 
 The following ERP systems already support SupplyXhain:
 | ERP System | Article Synchronization | Orders / Fulfillment |
