@@ -131,7 +131,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			\$token = get_option('woocommerce-supplyXhain:token');
 			\$catalog = json_decode(wp_remote_retrieve_body(wp_remote_get(
 				/* URL */ \$api['catalog_url'] . '?page=' . \$page . '&' . get_option('woocommerce-supplyXhain:catalogparams'),
-				/* auth header */ \$token ? ['headers' => ['Authorization' => 'Bearer ' . \$token] : []
+				/* auth header */ \$token ? ['headers' => ['Authorization' => 'Bearer ' . \$token]] : []
 			)), true);
 			if (!\$catalog) break;
 
