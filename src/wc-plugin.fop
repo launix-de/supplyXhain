@@ -171,7 +171,7 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 						array_push(\$piclist, \$picid);
 					} else {
 						\$log('Inserting Media ' . \$picture['url']);
-						\$picid = media_sideload_image(\$picture['url'].'.png', \$product->get_id(), \$i18n(\$picture['title']), 'id');
+						\$picid = media_sideload_image(\$picture['url'], \$product->get_id(), \$i18n(\$picture['title']), 'id');
 						update_post_meta(\$picid, 'orig_url', \$picture['url']);
 						array_push(\$piclist, \$picid);
 					}
@@ -192,14 +192,16 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 			\$page = \$catalog['page'] + 1;
 		}
 
-		\$wpdb->query('START TRANSACTION');
-		// unpublish products with sx_id that are not in article_map
-		\$posts = \$wpdb->get_results('SELECT post_id FROM `'.\$wpdb->prefix.'postmeta` WHERE meta_key = \\'sx_id\\' AND NOT meta_value IN (' . implode(',',array_keys(\$article_map)) . ') AND post_id IN (SELECT ID FROM `'.\$wpdb->prefix.'posts` WHERE post_type = \\'product\\' AND post_status = \\'publish\\')');
-		foreach (\$posts AS \$post) {
-			\$log('disable '.\$post->post_id);
-			wp_update_post(['ID' => \$post->post_id, 'post_status' => 'trash']);
+		if (count(\$article_map)) {
+			\$wpdb->query('START TRANSACTION');
+			// unpublish products with sx_id that are not in article_map
+			\$posts = \$wpdb->get_results('SELECT post_id FROM `'.\$wpdb->prefix.'postmeta` WHERE meta_key = \\'sx_id\\' AND NOT meta_value IN (' . implode(',',array_keys(\$article_map)) . ') AND post_id IN (SELECT ID FROM `'.\$wpdb->prefix.'posts` WHERE post_type = \\'product\\' AND post_status = \\'publish\\')');
+			foreach (\$posts AS \$post) {
+				\$log('disable '.\$post->post_id);
+				wp_update_post(['ID' => \$post->post_id, 'post_status' => 'trash']);
+			}
+			\$wpdb->query('COMMIT');
 		}
-		\$wpdb->query('COMMIT');
 		fop_wc_sx_sync_order(\$api, \$log);
 		\$log('Import done');
 	}
