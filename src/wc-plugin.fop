@@ -301,10 +301,10 @@ Snippet<"wordpress/plugin/woocommerce-supplyXhain", "syncer", "
 					// mark as finished
 					\$wc_order->update_status('wc-completed', 'SupplyXhain update');
 					\$log('completed order: ' . json_encode(\$order_data));
-				} else if (\$order_data['state'] == 'cancelled') {
-					// mark as cancelled
-					\$wc_order->update_status('wc-cancelled', 'SupplyXhain update');
-					\$log('cancelled order: ' . json_encode(\$order_data));
+				} else if (\$order_data['state'] == 'canceled') {
+					// mark as canceled
+					\$wc_order->update_status('wc-canceled', 'SupplyXhain update');
+					\$log('canceled order: ' . json_encode(\$order_data));
 				} else {
 					\$log('pending order: ' . json_encode(\$order_data));
 				}
