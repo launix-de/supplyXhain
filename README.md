@@ -10,6 +10,8 @@ SupplyChain is a open REST API that lets you integrate all sorts of shops and ma
 | amazon | planned | planned |
 | ShopWare | planned | planned |
 | Magento | planned | planned |
+| Otto | planned | planned |
+| Kaufland | planned | planned |
 | speed4trade | planned | planned |
 | Launix ERPL purchase module | planned | planned |
 
